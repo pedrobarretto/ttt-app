@@ -7,36 +7,35 @@ import oImg from './assets/o.png';
 
 export default function App() {
   const [table, setTable] = useState([
-    ['', 'o', 'o'],
-    ['', '', ''],
-    ['', '', '']
+    ['o', '', 'o'],
+    ['x', '', 'x'],
+    ['', '', 'o']
   ]);
 
   return (
     <View style={styles.container}>
       <ImageBackground source={board} style={styles.bg} resizeMode='contain' />
-      {
-        table.map((row, i) => {
-          return row.map((innerRow, innerIndex) => {
-            console.log(row)
-            if (row[i] === 'x') {
-              console.log('X', row[i])
-              return (
-                <Image key={i + 'x'} source={xImg} style={styles.img} />
-              )
-            } else if (row[i] === 'o') {
-              console.log('O', row[i])
-              return (
-                <Image key={i + 'o'} source={oImg} style={styles.img} />
-              )
-            } else {
-              console.log('blank')
-              return <View key={i + 'blank'} />
-            }
+
+      <View style={styles.grid}>
+        {
+          table.map((row) => {
+            return (
+              <View style={styles.row}>
+                {
+                  row.map((cell) => {
+                    return (
+                      <View style={styles.cell}>
+                        {cell === 'o' && <Image source={oImg} style={[styles.img, styles.oImg]} />}
+                        {cell === 'x' && <Image source={xImg} style={[styles.img, styles.xImg]} />}
+                      </View>
+                    )
+                  })
+                }
+              </View>
+            )
           })
-        })
-      }
-      
+        }
+      </View>
       <StatusBar style="auto" />
     </View>
   );
@@ -51,9 +50,35 @@ const styles = StyleSheet.create({
   },
   bg: {
     width: '100%',
-    height: '100%'
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   img: {
+    position: 'absolute',
+  },
+  xImg: {
+    marginTop: 15,
+    marginLeft: 15
+  },
+  oImg: {
+    marginTop: 15,
+    marginLeft: 15
+  },
+  grid: {
+    borderWidth: 1,
+    borderColor: 'red',
+    width: '80%',
+    aspectRatio: 1,
     position: 'absolute'
+  },
+  row: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  cell: {
+    width: 100,
+    height: 100,
+    flex: 1,
   }
 });
