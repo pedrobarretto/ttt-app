@@ -1,23 +1,38 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View, ImageBackground, Image, Pressable } from 'react-native';
+import { StyleSheet, View, ImageBackground, Image, Pressable, Button } from 'react-native';
 import board from './assets/bg.png';
 import xImg from './assets/x.png';
 import oImg from './assets/o.png';
 
+enum Gamemode {
+  ia,
+  human
+};
+
+interface Scores {
+  [key: string]: number
+}
+
 export default function App() {
+  const [gamemode, setGamemode] = useState<Gamemode>(Gamemode.human);
   const [turn, setTurn] = useState<'x' | 'o'>('x');
   const [table, setTable] = useState([
     ['', '', ''],
     ['', '', ''],
     ['', '', '']
   ]);
-
   const emptyTable = [
     ['', '', ''],
     ['', '', ''],
     ['', '', '']
   ];
+
+  const scores: Scores = {
+    'x': 1,
+    'o': -1,
+    'tie': 0
+  };
 
   const getCol = (colIndex: number): string[] => [
     table[0][colIndex],
@@ -37,18 +52,13 @@ export default function App() {
     table[2][0]
   ];
 
-  const makeMove = (row: number, cell: number) => {
-    const pos = table[row][cell];
-
-    if (pos !== '') return;
-
-    let newTable = [];
-    table[row][cell] = turn;
-    newTable = table;
-
-    setTable(newTable);
-    setTurn(turn === 'x' ? 'o' : 'x');
-  }
+  const changeGameMode = (gm: Gamemode) => {
+    setTable(emptyTable);
+    setGamemode(gm);
+    if (gm === Gamemode.ia) {
+      iaMove();
+    }
+  };
 
   function allEqual(arr: string[]) {
     return new Set(arr).size == 1;
@@ -60,39 +70,142 @@ export default function App() {
     return filteredArray.length > 0 ? true : false; 
   }
 
+  const makeMove = (row: number, cell: number) => {
+    const pos = table[row][cell];
+
+    if (pos !== '') return;
+
+    let newTable = [...table];
+    newTable[row][cell] = gamemode === Gamemode.ia ? 'o' : turn;
+
+    setTable(newTable);
+
+    if (gamemode === Gamemode.human) {
+      setTurn((state) => {
+        return state === 'x' ? 'o' : 'x'
+      });
+    } else {
+      console.debug('CALLING IA MOVE FUNC!');
+      iaMove();
+    }
+  }
+
+  const minimax = (table: string[][], depth: number, isMaximizing: boolean): number => {
+    const { isWinner, winner } = checkWinner();
+    console.log(isWinner, winner, scores[winner]);
+    if (isWinner === true) {
+      console.log('isWinner === true');
+      return scores[winner];
+    }
+
+    if (isMaximizing) {
+      let bestScore = -Infinity;
+      let newTable = [...table];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (newTable[i][j] === '') {
+            console.log('i, j: ', i, j);
+            newTable[i][j] = 'x';
+            const score = minimax(newTable, depth + 1, false);
+            newTable[i][j] = '';
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+      }
+      return bestScore;
+    } else {
+      let bestScore = -Infinity;
+      let newTable = [...table];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (newTable[i][j] === '') {
+            console.log('i, j: ', i, j);
+            newTable[i][j] = 'o';
+            const score = minimax(newTable, depth + 1, true);
+            newTable[i][j] = '';
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+      }
+      return bestScore;
+    }
+  };
+
+  const iaMove = () => {
+    console.log('turn: ', turn)
+    let bestScore = -Infinity;
+    let bestMove = { i: 0, j: 0 };
+    let newTable = [...table];
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        if (newTable[i][j] === '') {
+          console.log('i, j: ', i, j);
+          newTable[i][j] = 'x';
+          const score = minimax(newTable, 0, false);
+          newTable[i][j] = '';
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = { i, j };
+          }
+        }
+      }
+    }
+    newTable[bestMove.i][bestMove.j] = 'x';
+    console.log('newTable: ', newTable)
+    setTable(() => {
+      return [...newTable];
+    });
+    console.log('turn ao final: ', turn);
+  };
+
   const checkWinner = () => {
     let winner = '';
+    let isWinner = false;
     table.map((row, rIndex) => {
       // Check row
       if (row[rIndex] !== '' && allEqual(row)) {
         console.debug('Win on horizontal!');
-        setTable(emptyTable);
         winner = turn === 'x' ? 'o' : 'x';
+        isWinner = true;
       }
 
       // Check col
       if (row[rIndex] !== '' && allEqual(getCol(rIndex))) {
         console.debug('Win on vertical!');
-        setTable(emptyTable);
         winner = turn === 'x' ? 'o' : 'x';
+        isWinner = true;
       }
 
       // Check left diagonal
       if (!checkIfArrayHasBlankCell(getLeftDiagonal()) && allEqual(getLeftDiagonal())) {
         console.debug('Win on left diagonal!');
-        setTable(emptyTable);
         winner = turn === 'x' ? 'o' : 'x';
+        isWinner = true;
       }
 
       // Check right diagonal
       if (!checkIfArrayHasBlankCell(getRightDiagonal()) && allEqual(getRightDiagonal())) {
         console.debug('Win on right diagonal!');
-        setTable(emptyTable);
         winner = turn === 'x' ? 'o' : 'x';
+        isWinner = true;
+      }
+
+      if (
+        row[rIndex] !== '' &&
+        !allEqual(row) &&
+        !allEqual(getCol(rIndex)) &&
+        !checkIfArrayHasBlankCell(getLeftDiagonal()) &&
+        !allEqual(getLeftDiagonal()) &&
+        !checkIfArrayHasBlankCell(getRightDiagonal()) && 
+        !allEqual(getRightDiagonal())
+      ) {
+        console.log('Its a tie!');
+        winner = 'tie';
+        isWinner = false;
       }
     });
 
-    return winner;
+    return { isWinner, winner };
   }
 
   useEffect(() => {
@@ -124,6 +237,12 @@ export default function App() {
           })
         }
       </View>
+
+      <View style={styles.buttonsView}>
+        <Button title='1x1' onPress={() => changeGameMode(Gamemode.human)} />
+        <Button title='Contra bot' onPress={() => changeGameMode(Gamemode.ia)} />
+      </View>
+
       <StatusBar style="auto" />
     </View>
   );
@@ -166,5 +285,12 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     flex: 1,
+  },
+  buttonsView: {
+    bottom: 60,
+    position: 'absolute',
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 5
   }
 });
