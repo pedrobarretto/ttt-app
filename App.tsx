@@ -60,6 +60,17 @@ export default function App() {
     }
   };
 
+  const restartGame = () => {
+    setTable(emptyTable);
+    setTurn('x');
+  }
+
+  function allEqualNoBlank(arr: string[]) {
+    if (checkIfArrayHasBlankCell(arr)) return false;
+
+    return allEqual(arr);
+  }
+
   function allEqual(arr: string[]) {
     return new Set(arr).size == 1;
   }
@@ -80,137 +91,90 @@ export default function App() {
 
     setTable(newTable);
 
-    if (gamemode === Gamemode.human) {
+    if (gamemode === Gamemode.ia) {
+      console.log('CALLING IAMOVE() FUNC!');
+      iaMove();
+    } else {
       setTurn((state) => {
         return state === 'x' ? 'o' : 'x'
       });
-    } else {
-      console.debug('CALLING IA MOVE FUNC!');
-      iaMove();
     }
   }
 
-  const minimax = (table: string[][], depth: number, isMaximizing: boolean): number => {
-    const { isWinner, winner } = checkWinner();
-    console.log(isWinner, winner, scores[winner]);
-    if (isWinner === true) {
-      console.log('isWinner === true');
-      return scores[winner];
-    }
+  function minimax(board: string[][], depth: number, isMaximizing: boolean) {
+    return 1;
+  }
 
-    if (isMaximizing) {
-      let bestScore = -Infinity;
-      let newTable = [...table];
-      for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 3; j++) {
-          if (newTable[i][j] === '') {
-            console.log('i, j: ', i, j);
-            newTable[i][j] = 'x';
-            const score = minimax(newTable, depth + 1, false);
-            newTable[i][j] = '';
-            bestScore = Math.max(score, bestScore);
-          }
-        }
-      }
-      return bestScore;
-    } else {
-      let bestScore = -Infinity;
-      let newTable = [...table];
-      for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 3; j++) {
-          if (newTable[i][j] === '') {
-            console.log('i, j: ', i, j);
-            newTable[i][j] = 'o';
-            const score = minimax(newTable, depth + 1, true);
-            newTable[i][j] = '';
-            bestScore = Math.min(score, bestScore);
-          }
-        }
-      }
-      return bestScore;
-    }
-  };
-
-  const iaMove = () => {
-    console.log('turn: ', turn)
+  function iaMove() {
     let bestScore = -Infinity;
-    let bestMove = { i: 0, j: 0 };
-    let newTable = [...table];
+    let move = { i: 0, j: 0 };
+    const board = [...table];
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
-        if (newTable[i][j] === '') {
-          console.log('i, j: ', i, j);
-          newTable[i][j] = 'x';
-          const score = minimax(newTable, 0, false);
-          newTable[i][j] = '';
+        if (board[i][j] == '') {
+          board[i][j] = 'x';
+          let score = minimax(board, 0, false);
+          board[i][j] = '';
           if (score > bestScore) {
             bestScore = score;
-            bestMove = { i, j };
+            move = { i, j };
           }
         }
       }
     }
-    newTable[bestMove.i][bestMove.j] = 'x';
-    console.log('newTable: ', newTable)
-    setTable(() => {
-      return [...newTable];
-    });
-    console.log('turn ao final: ', turn);
-  };
+    board[move.i][move.j] = 'x';
+    setTable(board);
+    // currentPlayer = human;
+  }
 
-  const checkWinner = () => {
+  const checkWinner = (table: string[][]) => {
     let winner = '';
     let isWinner = false;
-    table.map((row, rIndex) => {
-      // Check row
-      if (row[rIndex] !== '' && allEqual(row)) {
-        console.debug('Win on horizontal!');
-        winner = turn === 'x' ? 'o' : 'x';
-        isWinner = true;
-      }
 
-      // Check col
-      if (row[rIndex] !== '' && allEqual(getCol(rIndex))) {
-        console.debug('Win on vertical!');
-        winner = turn === 'x' ? 'o' : 'x';
-        isWinner = true;
-      }
-
-      // Check left diagonal
-      if (!checkIfArrayHasBlankCell(getLeftDiagonal()) && allEqual(getLeftDiagonal())) {
-        console.debug('Win on left diagonal!');
-        winner = turn === 'x' ? 'o' : 'x';
-        isWinner = true;
-      }
-
-      // Check right diagonal
-      if (!checkIfArrayHasBlankCell(getRightDiagonal()) && allEqual(getRightDiagonal())) {
-        console.debug('Win on right diagonal!');
-        winner = turn === 'x' ? 'o' : 'x';
-        isWinner = true;
-      }
-
-      if (
-        row[rIndex] !== '' &&
-        !allEqual(row) &&
-        !allEqual(getCol(rIndex)) &&
-        !checkIfArrayHasBlankCell(getLeftDiagonal()) &&
-        !allEqual(getLeftDiagonal()) &&
-        !checkIfArrayHasBlankCell(getRightDiagonal()) && 
-        !allEqual(getRightDiagonal())
+    if (allEqualNoBlank(table[0]) || allEqualNoBlank(table[1]) ||allEqualNoBlank(table[2])) {
+      console.debug('Win on horizontal!');
+      winner = turn === 'x' ? 'o' : 'x';
+      isWinner = true;
+    }
+    if (allEqualNoBlank(getCol(0)) || allEqualNoBlank(getCol(1)) || allEqualNoBlank(getCol(2))) {
+      console.debug('Win on vertical!');
+      winner = turn === 'x' ? 'o' : 'x';
+      isWinner = true;
+    }
+    if (allEqualNoBlank(getLeftDiagonal())) {
+      console.debug('Win on left diagonal!');
+      winner = turn === 'x' ? 'o' : 'x';
+      isWinner = true;
+    }
+    if (allEqualNoBlank(getRightDiagonal())) {
+      console.debug('Win on right diagonal!');
+      winner = turn === 'x' ? 'o' : 'x';
+      isWinner = true;
+    }
+    if (
+      !checkIfArrayHasBlankCell(table[0]) &&
+      !checkIfArrayHasBlankCell(table[1]) &&
+      !checkIfArrayHasBlankCell(table[2]) &&
+      !allEqual(table[0]) &&
+      !allEqual(table[1]) &&
+      !allEqual(table[2]) &&
+      !allEqual(getCol(0)) &&
+      !allEqual(getCol(1)) &&
+      !allEqual(getCol(2)) &&
+      !allEqual(getLeftDiagonal()) &&
+      !allEqual(getRightDiagonal())
       ) {
-        console.log('Its a tie!');
-        winner = 'tie';
-        isWinner = false;
-      }
-    });
+      console.debug('Its a tie!');
+      winner = 'tie';
+      isWinner = false;
+    }
 
     return { isWinner, winner };
   }
 
   useEffect(() => {
-    const x = checkWinner();
-    console.log(x);
+    const { isWinner, winner } = checkWinner(table);
+    console.log(`Checking winner. isWinner: ${isWinner}. winner: ${winner}`);
   }, [table, turn]);
 
   return (
@@ -241,6 +205,7 @@ export default function App() {
       <View style={styles.buttonsView}>
         <Button title='1x1' onPress={() => changeGameMode(Gamemode.human)} />
         <Button title='Contra bot' onPress={() => changeGameMode(Gamemode.ia)} />
+        <Button title='Restart' onPress={restartGame} />
       </View>
 
       <StatusBar style="auto" />
