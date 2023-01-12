@@ -29,10 +29,14 @@ export default function App() {
   ];
 
   const scores: Scores = {
-    'x': 1,
-    'o': -1,
+    'x': 10,
+    'o': -10,
     'tie': 0
   };
+
+  useEffect(() => {
+    checkWinner(table, turn);
+  }, [table, turn]);
 
   const getCol = (colIndex: number): string[] => [
     table[0][colIndex],
@@ -56,7 +60,7 @@ export default function App() {
     setTable(emptyTable);
     setGamemode(gm);
     if (gm === Gamemode.ia) {
-      iaMove();
+      iaMove(emptyTable);
     }
   };
 
@@ -93,7 +97,8 @@ export default function App() {
 
     if (gamemode === Gamemode.ia) {
       console.log('CALLING IAMOVE() FUNC!');
-      iaMove();
+      setTurn('o');
+      iaMove(newTable);
     } else {
       setTurn((state) => {
         return state === 'x' ? 'o' : 'x'
@@ -101,19 +106,74 @@ export default function App() {
     }
   }
 
-  function minimax(board: string[][], depth: number, isMaximizing: boolean) {
-    return 1;
+  function minimax(table: string[][], depth: number, isMaximizing: boolean, player: string) {
+    let board = [...table];
+    const { isWinner, winner } = checkWinner(board, player);
+
+    if (isWinner === true || depth === 0) {
+      console.debug('[minimax] isWinner is equal to ', isWinner);
+      console.debug('[minimax] scores[winner] is equal to ', scores[winner]);
+      console.log('winner: ', winner);
+      return scores[winner] || 0;
+    }
+
+    if (isMaximizing) {
+      let bestScore = -Infinity;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (board[i][j] == '') {
+            board[i][j] = 'x';
+            let score = minimax(board, depth + 1, false, 'x');
+            board[i][j] = '';
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+      }
+      return bestScore;
+    } else {
+      let bestScore = Infinity;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (board[i][j] == '') {
+            board[i][j] = 'o';
+            let score = minimax(board, depth + 1, true, 'o');
+            board[i][j] = '';
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+      }
+      return bestScore;
+    }
+
+    // let bestScore = isMaximizing ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+    // let currentScore;
+    // for (let row = 0; row < board.length; row++) {
+    //     for (let col = 0; col < board[row].length; col++) {
+    //         if (board[row][col] === '') {
+    //             board[row][col] = isMaximizing ? 'x' : 'o';
+    //             currentScore = minimax(board, depth - 1, !isMaximizing);
+    //             console.debug('[minimax] currentScore is equals to ', currentScore)
+    //             board[row][col] = '';
+    //             if (isMaximizing) {
+    //                 bestScore = Math.max(bestScore, currentScore);
+    //             } else {
+    //                 bestScore = Math.min(bestScore, currentScore);
+    //             }
+    //         }
+    //     }
+    // }
+    // return bestScore;
   }
 
-  function iaMove() {
+  function iaMove(board: string[][]) {
     let bestScore = -Infinity;
     let move = { i: 0, j: 0 };
-    const board = [...table];
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         if (board[i][j] == '') {
           board[i][j] = 'x';
-          let score = minimax(board, 0, false);
+          let score = minimax(board, 0, false, 'x');
+          console.debug('[iaMove] score: ', score);
           board[i][j] = '';
           if (score > bestScore) {
             bestScore = score;
@@ -127,29 +187,31 @@ export default function App() {
     // currentPlayer = human;
   }
 
-  const checkWinner = (table: string[][]) => {
+  const checkWinner = (table: string[][], player: string) => {
     let winner = '';
     let isWinner = false;
 
+    console.log('[checkWinner] player is ', player);
+
     if (allEqualNoBlank(table[0]) || allEqualNoBlank(table[1]) ||allEqualNoBlank(table[2])) {
-      console.debug('Win on horizontal!');
-      winner = turn === 'x' ? 'o' : 'x';
+      winner = player === 'x' ? 'o' : 'x';
       isWinner = true;
+      console.debug(`Win on horizontal! Winner is ${winner}`);
     }
     if (allEqualNoBlank(getCol(0)) || allEqualNoBlank(getCol(1)) || allEqualNoBlank(getCol(2))) {
-      console.debug('Win on vertical!');
-      winner = turn === 'x' ? 'o' : 'x';
+      winner = player === 'x' ? 'o' : 'x';
       isWinner = true;
+      console.debug(`Win on vertical! Winner is ${winner}`);
     }
     if (allEqualNoBlank(getLeftDiagonal())) {
-      console.debug('Win on left diagonal!');
-      winner = turn === 'x' ? 'o' : 'x';
+      winner = player === 'x' ? 'o' : 'x';
       isWinner = true;
+      console.debug(`Win on left diagonal! Winner is ${winner}`);
     }
     if (allEqualNoBlank(getRightDiagonal())) {
-      console.debug('Win on right diagonal!');
-      winner = turn === 'x' ? 'o' : 'x';
+      winner = player === 'x' ? 'o' : 'x';
       isWinner = true;
+      console.debug(`Win on right diagonal! Winner is ${winner}`);
     }
     if (
       !checkIfArrayHasBlankCell(table[0]) &&
@@ -171,11 +233,6 @@ export default function App() {
 
     return { isWinner, winner };
   }
-
-  useEffect(() => {
-    const { isWinner, winner } = checkWinner(table);
-    console.log(`Checking winner. isWinner: ${isWinner}. winner: ${winner}`);
-  }, [table, turn]);
 
   return (
     <View style={styles.container}>
